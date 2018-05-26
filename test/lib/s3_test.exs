@@ -203,6 +203,15 @@ defmodule ExAws.S3Test do
     assert uri.port == 1234
   end
 
+  test "#put_bucket_notification" do
+    expected = %Operation.S3{
+      body: "<NotificationConfiguration><QueueConfiguration><Id>foo</Id><Queue>bar</Queue><Filter><S3Key><FilterRule><Name>prefix</Name><Value>test</Value></FilterRule></S3Key></Filter><Event>s3:ObjectCreated:*</Event><Event>s3:ObjectRemoved:Delete</Event></QueueConfiguration></NotificationConfiguration>",
+      bucket: "bucket", headers: %{"content-md5" => "g65PUhlW92jPpDr0FvybHA=="}, path: "/", resource: "notification", http_method: :put
+    }
+
+    assert expected == ExAws.S3.put_bucket_notification("bucket", [%{type: :queue, id: "foo", target_arn: "bar", events: ["s3:ObjectCreated:*", "s3:ObjectRemoved:Delete"], filters: [%{name: "prefix", value: "test"}]}])
+  end
+
   defp assert_pre_signed_url(url, expected_scheme_host_path, expected_expire) do
     uri = URI.parse(url)
     assert expected_scheme_host_path == "#{uri.scheme}://#{uri.host}#{uri.path}"

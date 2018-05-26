@@ -328,9 +328,21 @@ defmodule ExAws.S3 do
 
   @doc "Update or create a bucket notification configuration"
   @spec put_bucket_notification(bucket :: binary, notification_config :: map()) :: no_return
-  def put_bucket_notification(bucket, _notification_config) do
-    raise "not yet implemented"
-    request(:put, bucket, "/")
+  def put_bucket_notification(bucket, notification_config) do
+    notifications = notification_config
+                    |> Enum.map(&build_notification/1)
+                    |> IO.iodata_to_binary()
+
+    body = [
+             "<NotificationConfiguration>",
+             notifications,
+             "</NotificationConfiguration>"
+           ] |> IO.iodata_to_binary()
+
+    content_md5 = :crypto.hash(:md5, body) |> Base.encode64
+    headers = %{"content-md5" => content_md5}
+
+    request(:put, bucket, "/", resource: "notification", headers: headers, body: body)
   end
 
   @doc "Update or create a bucket replication configuration"

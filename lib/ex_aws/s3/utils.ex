@@ -111,6 +111,51 @@ defmodule ExAws.S3.Utils do
     |> IO.iodata_to_binary
   end
 
+  def build_notification(notification) do
+    type_mapping = %{
+      lambda: "CloudFunction",
+      queue: "Queue",
+      topic: "Topic"
+    }
+
+    event_type = case Map.get(type_mapping, notification[:type]) do
+      nil -> ""
+      type -> type
+    end
+
+    filter = case notification[:filters] do
+       rules when is_list(rules) ->
+         Enum.map(rules, fn(rule) ->
+           [
+           "<FilterRule>",
+              "<Name>#{rule[:name] || ""}</Name>",
+              "<Value>#{rule[:value] || ""}</Value>",
+           "</FilterRule>"
+           ]
+         end)
+         |> IO.iodata_to_binary()
+         |> (&("<Filter><S3Key>#{&1}</S3Key></Filter>")).()
+      _ -> ""
+    end
+
+    events = case notification[:events] do
+      events_list when is_list(events_list) ->
+        Enum.map(events_list, fn(event) ->
+          "<Event>#{event}</Event>"
+        end) |> IO.iodata_to_binary()
+      _else -> ""
+    end
+
+
+     [ "<#{event_type}Configuration>",
+      "<Id>#{notification[:id] || ""}</Id>",
+      "<#{event_type}>#{notification[:target_arn] || ""}</#{event_type}>",
+      filter,
+      events,
+      "</#{event_type}Configuration>"
+    ] |> IO.iodata_to_binary
+  end
+
   def normalize_param(param) when is_atom(param) do
     param
     |> Atom.to_string
